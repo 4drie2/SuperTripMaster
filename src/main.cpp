@@ -6,24 +6,25 @@
 /*   By: abidaux <abidaux@student.42lehavre.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/10 02:59:25 by abidaux           #+#    #+#             */
-/*   Updated: 2025/12/10 03:23:08 by abidaux          ###   ########.fr       */
+/*   Updated: 2025/12/10 03:31:12 by abidaux          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-// --- ZONES D'INCLUDES CORRECTES ---
+// --- INCLUDES ---
 #ifdef SIMULATOR
-    // Sur PC : On inclut le driver SDL de LVGL
-    // Le flag dans platformio.ini s'occupe du reste
-    #include "lv_drivers/sdl/sdl.h"
+    // Grâce au fix dans platformio.ini, on peut inclure directement "sdl/sdl.h"
+    #include "sdl/sdl.h" 
 #else
-    // Sur ESP32 : On a besoin d'Arduino
     #include <Arduino.h> 
 #endif
 
+// On inclut la config qu'on vient de créer
+#include "lv_conf.h" 
 #include "lvgl.h"
+
+// Tes fichiers
 #include "data_model.h"
 #include "gui.cpp"
-
 // --- FIN DES INCLUDES ---
 
 VehicleState state;
