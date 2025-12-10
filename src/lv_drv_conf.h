@@ -17,12 +17,6 @@
 # define SDL_VER_RES 240
 #endif
 
-// --- LA LIGNE MANQUANTE (Facteur de zoom de la fenêtre) ---
-#ifndef MONITOR_ZOOM
-# define MONITOR_ZOOM 1
-#endif
-// ---------------------------------------------------------
-
 // Active le contrôle par la souris
 #ifndef USE_MOUSE
 # define USE_MOUSE 1

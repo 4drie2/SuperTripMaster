@@ -1,52 +1,56 @@
 /* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: abidaux <abidaux@student.42lehavre.fr>     +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/12/10 02:59:25 by abidaux           #+#    #+#             */
-/*   Updated: 2025/12/10 03:31:12 by abidaux          ###   ########.fr       */
-/*                                                                            */
+/* */
+/* main.cpp - VERSION FINALE (Avec main() pour le PC)                       */
+/* */
 /* ************************************************************************** */
 
 // --- INCLUDES ---
 #ifdef SIMULATOR
-    // Grâce au fix dans platformio.ini, on peut inclure directement "sdl/sdl.h"
     #include "sdl/sdl.h" 
+    
+    /* --- Émulation Arduino pour le PC --- */
+    uint32_t millis() {
+        return SDL_GetTicks();
+    }
+    
+    void delay(uint32_t ms) {
+        SDL_Delay(ms);
+    }
+    /* ------------------------------------ */
+
 #else
     #include <Arduino.h> 
 #endif
 
-// On inclut la config qu'on vient de créer
 #include "lv_conf.h" 
 #include "lvgl.h"
-
-// Tes fichiers
 #include "data_model.h"
-#include "gui.cpp"
-// --- FIN DES INCLUDES ---
+
+// Déclarations
+void setup_ui();
+void update_ui(VehicleState &state);
 
 VehicleState state;
 unsigned long last_update = 0;
 
 // --- MODE SIMULATEUR ---
 #ifdef SIMULATOR
-// Note: On n'inclut PLUS "SDL.h" ici, c'est déjà géré en haut via lv_drivers
 // Sliders pour le simulateur
 lv_obj_t *slider_temp, *slider_rpm, *slider_speed;
 
+void create_simulator_controls() {
+    printf("Simulateur démarré.\n");
+}
+#endif
 // -----------------------
 
 void logic_update() {
-    // 1. Gestion Ventilateur (Hystérésis)
+    // 1. Gestion Ventilateur
     if (state.temp_eau >= TEMP_WATER_FAN_ON && !state.fan_status) {
         state.fan_status = true;
-        // digitalWrite(PIN_RELAY_FAN, HIGH); // Sur ESP32
         printf("FAN ON (Temp: %.1f)\n", state.temp_eau);
     } else if (state.temp_eau <= TEMP_WATER_FAN_OFF && state.fan_status) {
         state.fan_status = false;
-        // digitalWrite(PIN_RELAY_FAN, LOW); // Sur ESP32
         printf("FAN OFF\n");
     }
 
@@ -57,45 +61,69 @@ void logic_update() {
         state.alert_active = false;
     }
 
-    // 3. Tripmaster (Simulation incrément si on roule)
+    // 3. Tripmaster
     if (state.speed > 0) {
-        // Ajout distance basique pour l'exemple
-        state.trip_distance += (state.speed / 3600.0) * (0.1); // Update tous les 100ms
+        state.trip_distance += (state.speed / 3600.0) * (0.1); 
     }
 }
 
 void setup() {
-    // Init LVGL
     lv_init();
     
     #ifdef SIMULATOR
-        // Init SDL (Drivers écran PC)
-        // ... Code boiler plate SDL ...
-        // create_simulator_controls() est appelé ici
+        sdl_init(); 
+        
+        // Configuration Écran & Souris pour SDL
+        static lv_disp_draw_buf_t draw_buf;
+        static lv_color_t buf[SDL_HOR_RES * SDL_VER_RES]; 
+        lv_disp_draw_buf_init(&draw_buf, buf, NULL, SDL_HOR_RES * SDL_VER_RES);
+
+        static lv_disp_drv_t disp_drv;
+        lv_disp_drv_init(&disp_drv);
+        disp_drv.draw_buf = &draw_buf;
+        disp_drv.flush_cb = sdl_display_flush;
+        disp_drv.hor_res = SDL_HOR_RES;
+        disp_drv.ver_res = SDL_VER_RES;
+        lv_disp_drv_register(&disp_drv);
+
+        static lv_indev_drv_t indev_drv;
+        lv_indev_drv_init(&indev_drv);
+        indev_drv.type = LV_INDEV_TYPE_POINTER;
+        indev_drv.read_cb = sdl_mouse_read;
+        lv_indev_drv_register(&indev_drv);
+
         setup_ui();
-        create_simulator_controls(); // Ajoute les sliders de test sur l'écran
+        create_simulator_controls();
     #else
-        // Init TFT_eSPI (Drivers écran ESP32)
-        // tft.begin();
-        // lv_disp_draw_buf_init(...);
         setup_ui();
-        // Config GPIO relais ventilateur
-        // pinMode(PIN_RELAY_FAN, OUTPUT);
     #endif
 }
 
 void loop() {
-    lv_timer_handler(); // Gestion graphique LVGL
+    lv_timer_handler(); 
     
-    // Logique toutes les 100ms
     if (millis() - last_update > 100) {
         logic_update();
         update_ui(state);
-        
-        // Simuler changement de page avec bouton physique (Touche clavier sur PC ?)
-        // Si bouton appuyé -> lv_tabview_set_act(tabview, 1, LV_ANIM_ON);
-        
         last_update = millis();
     }
+    
     delay(5);
 }
+
+// --- LE FIX FINAL : Point d'entrée pour le PC ---
+#ifdef SIMULATOR
+int main(int argc, char *argv[]) {
+    (void)argc; // Pour éviter les warnings "unused variable"
+    (void)argv;
+
+    setup();
+
+    while(1) {
+        loop();
+    }
+
+    return 0;
+}
+#endif
+// ------------------------------------------------
